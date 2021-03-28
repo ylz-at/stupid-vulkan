@@ -1,6 +1,7 @@
 #pragma once
 #include "VulkanInstance.h"
 #include "VulkanDevice.h"
+#include "VulkanRenderer.h"
 
 class VulkanApplication {
 private:
@@ -23,6 +24,7 @@ public:
     // Vulkan Instance object
     VulkanInstance instanceObj;
     VulkanDevice* deviceObj;
+    VulkanRenderer* rendererObj;
 
     static VulkanApplication *GetInstance();
 

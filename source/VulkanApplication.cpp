@@ -12,10 +12,14 @@ VulkanApplication::VulkanApplication() {
     instanceObj.layerExtension.getInstanceLayerProperties();
 
     deviceObj = nullptr;
-    debugFlag = true;
+    debugFlag = false;
+    rendererObj = nullptr;
 }
 
-VulkanApplication::~VulkanApplication() = default;
+VulkanApplication::~VulkanApplication(){
+    delete rendererObj;
+    rendererObj = nullptr;
+}
 
 // Returns the Singleton object of VulkanApplication
 VulkanApplication* VulkanApplication::GetInstance(){
@@ -107,10 +111,19 @@ void VulkanApplication::initialize() {
     if (!gpus.empty()) {
         handShakeWithDevice(&gpus[0], layerNames, deviceExtensionNames);
     }
+
+    rendererObj = new VulkanRenderer(this, deviceObj);
+    rendererObj->initialize();
 }
 
 void VulkanApplication::deInitialize()
 {
+    rendererObj->destroyDepthBuffer();
+    rendererObj->getSwapChain()->destroySwapChain();
+    rendererObj->destroyCommandBuffer();
+    rendererObj->destroyCommandPool();
+    rendererObj->destroyPresentationWindow();
+
     deviceObj->destroyDevice();
     if (debugFlag) {
         instanceObj.layerExtension.destroyDebugReportCallback();
@@ -131,7 +144,7 @@ void VulkanApplication::update()
 bool VulkanApplication::render()
 {
     // Place holder, this will be utilized in the upcoming chapters
-    return true;
+    return rendererObj->render();
 }
 
 

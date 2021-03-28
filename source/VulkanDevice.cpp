@@ -28,8 +28,8 @@ VkResult VulkanDevice::createDevice(std::vector<const char *> &layers, std::vect
     dcInfo.pQueueCreateInfos = &qcInfo;
     dcInfo.enabledLayerCount = 0;
     dcInfo.ppEnabledLayerNames = nullptr;
-    dcInfo.enabledExtensionCount = (uint32_t)extensions.size();
-    dcInfo.ppEnabledExtensionNames = extensions.empty()? nullptr: extensions.data();
+    dcInfo.enabledExtensionCount = (uint32_t) extensions.size();
+    dcInfo.ppEnabledExtensionNames = extensions.empty() ? nullptr : extensions.data();
     dcInfo.pEnabledFeatures = nullptr;
 
     result = vkCreateDevice(*gpu, &dcInfo, nullptr, &device);
@@ -37,7 +37,23 @@ VkResult VulkanDevice::createDevice(std::vector<const char *> &layers, std::vect
     return result;
 }
 
-void  VulkanDevice::getPhysicalDeviceQueueAndProperties() {
+bool VulkanDevice::memoryTypeFromProperties(uint32_t typeBits, VkFlags requirementsMask, uint32_t *typeIndex) {
+    // Search memtypes to find first index with those properties
+    for (uint32_t i = 0; i < 32; i++) {
+        if ((typeBits & 1) == 1) {
+            // Type is available, does it match user properties?
+            if ((memoryProps.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask) {
+                *typeIndex = i;
+                return true;
+            }
+        }
+        typeBits >>= 1;
+    }
+    // No memory types matched, return failure
+    return false;
+}
+
+void VulkanDevice::getPhysicalDeviceQueueAndProperties() {
     // Queue queue families count with pass NULL as second parameter
     vkGetPhysicalDeviceQueueFamilyProperties2(*gpu, &queueFamilyCount, nullptr);
 
@@ -74,7 +90,7 @@ uint32_t VulkanDevice::getGraphicsQueueHandle() {
     return graphicsQueueIndex;
 }
 
-void VulkanDevice::getDeviceQueue(){
+void VulkanDevice::getDeviceQueue() {
     vkGetDeviceQueue(device, graphicsQueueWithPresentIndex, 0, &queue);
 }
 

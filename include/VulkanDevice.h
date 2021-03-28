@@ -33,4 +33,6 @@ public:
     uint32_t getGraphicsQueueHandle();
 
     void getDeviceQueue();
+
+    bool memoryTypeFromProperties(uint32_t typeBits, VkFlags requirementsMask, uint32_t *typeIndex);
 };
