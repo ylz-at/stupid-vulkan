@@ -2,6 +2,8 @@
 
 #include "Headers.h"
 #include "VulkanSwapChain.h"
+#include "VulkanDrawable.h"
+#include "VulkanShader.h"
 
 #define NUM_SAMPLES VK_SAMPLE_COUNT_1_BIT
 
@@ -14,6 +16,8 @@ public:
 public:
     // Simple lift cycle
     void initialize();
+
+    void prepare();
 
     bool render();
 
@@ -36,17 +40,37 @@ public:
 
     inline VulkanSwapChain *getSwapChain() { return swapChainObj; }
 
+    inline std::vector<VulkanDrawable *> *getDrawingItems() { return &drawableList; }
+
+    inline VkCommandPool *getCommandPool() { return &cmdPool; }
+
+    inline VulkanShader *getShader() { return &shaderObj; }
+
     void createCommandPool();
 
     void buildSwapChainAndDepthImage();
 
     void createDepthImage();
 
+    void createVertexBuffer();
+
+    void createShaders();
+
+    void createRenderPass(bool includeDepth, bool clear = true);
+
+    void createFrameBuffer(bool includeDepth);
+
     void destroyCommandBuffer();
 
     void destroyCommandPool();
 
     void destroyDepthBuffer();
+
+    void destroyDrawableVertexBuffer();
+
+    void destroyRenderpass();
+
+    void destroyFramebuffers();
 
 public:
 #ifdef _WIN32
@@ -69,9 +93,15 @@ public:
 
     VkCommandBuffer cmdDepthImage;
     VkCommandPool cmdPool;
+    VkCommandBuffer cmdVertexBuffer;
+
+    VkRenderPass renderPass;
+    std::vector<VkFramebuffer> frameBuffers; // Number of frame Buffers corresponding to each swap chain
     int width, height;
 private:
     VulkanApplication *application;
     VulkanDevice *deviceObj;
     VulkanSwapChain *swapChainObj;
+    std::vector<VulkanDrawable *> drawableList;
+    VulkanShader shaderObj;
 };

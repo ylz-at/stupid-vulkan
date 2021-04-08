@@ -1,15 +1,12 @@
-//
-// Created by Jinesi on 2021/3/7.
-//
-
 #include "VulkanRenderer.h"
 #include "VulkanApplication.h"
 #include "Wrappers.h"
+#include "MeshData.h"
 
 
 VulkanRenderer::VulkanRenderer(VulkanApplication *app, VulkanDevice *deviceObject) {
-    assert(application != nullptr);
-    assert(deviceObj != nullptr);
+    assert(app != nullptr);
+    assert(deviceObject != nullptr);
 
     memset(&Depth, 0, sizeof(Depth));
     memset(&connection, 0, sizeof(HINSTANCE));
@@ -17,6 +14,8 @@ VulkanRenderer::VulkanRenderer(VulkanApplication *app, VulkanDevice *deviceObjec
     application = app;
     deviceObj = deviceObject;
     swapChainObj = new VulkanSwapChain(this);
+    auto *drawableObj = new VulkanDrawable(this);
+    drawableList.push_back(drawableObj);
 }
 
 VulkanRenderer::~VulkanRenderer() {
@@ -36,6 +35,26 @@ void VulkanRenderer::initialize() {
 
     // Let's create the swap chain color images and depth image
     buildSwapChainAndDepthImage();
+
+    // Build the vertex buffer
+    createVertexBuffer();
+
+    const bool includeDepth = true;
+
+    // Create the render pass now..
+    createRenderPass(includeDepth);
+
+    // Use render pass and create frame buffer
+    createFrameBuffer(includeDepth);
+
+    // Create the vertex and fragment shader
+    createShaders();
+}
+
+void VulkanRenderer::prepare() {
+    for (auto drawableObj : drawableList) {
+        drawableObj->prepare();
+    }
 }
 
 bool VulkanRenderer::render() {
@@ -60,6 +79,13 @@ LRESULT CALLBACK VulkanRenderer::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
         case WM_CLOSE:
             PostQuitMessage(0);
             break;
+        case WM_PAINT:
+            for (auto drawableObj : appObj->rendererObj->drawableList)
+            {
+                drawableObj->render();
+            }
+
+            return 0;
         default:
             break;
     }
@@ -250,6 +276,10 @@ void VulkanRenderer::createDepthImage() {
     result = vkAllocateMemory(deviceObj->device, &memAlloc, nullptr, &Depth.mem);
     assert(result == VK_SUCCESS);
 
+    // Bind the allocated memeory
+    result = vkBindImageMemory(deviceObj->device, Depth.image, Depth.mem, 0);
+    assert(result == VK_SUCCESS);
+
     VkImageViewCreateInfo imgViewInfo = {};
     imgViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     imgViewInfo.pNext = nullptr;
@@ -285,11 +315,62 @@ void VulkanRenderer::createDepthImage() {
     assert(result == VK_SUCCESS);
 }
 
+void VulkanRenderer::createVertexBuffer()
+{
+    CommandBufferMgr::allocCommandBuffer(&deviceObj->device, cmdPool, &cmdVertexBuffer);
+    CommandBufferMgr::beginCommandBuffer(cmdVertexBuffer);
+
+    for (VulkanDrawable* drawableObj : drawableList)
+    {
+        drawableObj->createVertexBuffer(triangleData, sizeof(triangleData), sizeof(triangleData[0]), false);
+    }
+    CommandBufferMgr::endCommandBuffer(cmdVertexBuffer);
+    CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &cmdVertexBuffer);
+}
+
+void VulkanRenderer::createShaders()
+{
+    void* vertShaderCode, *fragShaderCode;
+    size_t sizeVert, sizeFrag;
+
+#ifdef AUTO_COMPILE_GLSL_TO_SPV
+    vertShaderCode = readFile("./../Draw.vert", &sizeVert);
+	fragShaderCode = readFile("./../Draw.frag", &sizeFrag);
+
+	shaderObj.buildShader((const char*)vertShaderCode, (const char*)fragShaderCode);
+#else
+    vertShaderCode = readFile("./../Draw-vert.spv", &sizeVert);
+    fragShaderCode = readFile("./../Draw-frag.spv", &sizeFrag);
+
+    shaderObj.buildShaderModuleWithSPV((uint32_t*)vertShaderCode, sizeVert, (uint32_t*)fragShaderCode, sizeFrag);
+#endif
+}
+void VulkanRenderer::destroyFramebuffers()
+{
+    for (uint32_t i = 0; i < swapChainObj->scPublicVars.swapchainImageCount; i++) {
+        vkDestroyFramebuffer(deviceObj->device, frameBuffers.at(i), NULL);
+    }
+    frameBuffers.clear();
+}
+
 void VulkanRenderer::destroyDepthBuffer()
 {
     vkDestroyImageView(deviceObj->device, Depth.view, nullptr);
     vkDestroyImage(deviceObj->device, Depth.image, nullptr);
     vkFreeMemory(deviceObj->device, Depth.mem, nullptr);
+}
+
+void VulkanRenderer::destroyRenderpass()
+{
+    vkDestroyRenderPass(deviceObj->device, renderPass, nullptr);
+}
+
+void VulkanRenderer::destroyDrawableVertexBuffer()
+{
+    for (auto drawableObj : drawableList)
+    {
+        drawableObj->destroyVertexBuffer();
+    }
 }
 
 void VulkanRenderer::destroyCommandBuffer()
@@ -318,7 +399,7 @@ void VulkanRenderer::setImageLayout(VkImage image, VkImageAspectFlags aspectMask
     // The deviceObj->queue must be initialized
     VkImageMemoryBarrier imgMemoryBarrier = {};
     imgMemoryBarrier.sType			= VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imgMemoryBarrier.pNext			= NULL;
+    imgMemoryBarrier.pNext			= nullptr;
     imgMemoryBarrier.srcAccessMask	= srcAccessMask;
     imgMemoryBarrier.dstAccessMask	= 0;
     imgMemoryBarrier.oldLayout		= oldImageLayout;
@@ -354,5 +435,103 @@ void VulkanRenderer::setImageLayout(VkImage image, VkImageAspectFlags aspectMask
     VkPipelineStageFlags srcStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
     VkPipelineStageFlagBits destStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
     vkCmdPipelineBarrier(cmdBuf, srcStages, destStages, 0, 0, nullptr, 0, nullptr, 1, &imgMemoryBarrier);
+}
+
+void VulkanRenderer::createRenderPass(bool isDepthSupported, bool clear) {
+    // Dependency on VulkanSwapChain::createSwapChain() to
+    // get the color surface image and VulkanRenderer::createDepthBuffer()
+    // to get the depth buffer image.
+
+    VkResult  result;
+    // Attach the color buffer and depth buffer as an attachment to render pass instance
+    VkAttachmentDescription attachments[2];
+    attachments[0].format					= swapChainObj->scPublicVars.format;
+    attachments[0].samples					= NUM_SAMPLES;
+    attachments[0].loadOp					= clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[0].storeOp					= VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[0].stencilLoadOp			= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[0].stencilStoreOp			= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[0].initialLayout			= VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[0].finalLayout				= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    attachments[0].flags					= VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT;
+
+    // Is the depth buffer present the define attachment properties for depth buffer attachment.
+    if (isDepthSupported)
+    {
+        attachments[1].format				= Depth.format;
+        attachments[1].samples				= NUM_SAMPLES;
+        attachments[1].loadOp				= clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[1].storeOp				= VK_ATTACHMENT_STORE_OP_STORE;
+        attachments[1].stencilLoadOp		= VK_ATTACHMENT_LOAD_OP_LOAD;
+        attachments[1].stencilStoreOp		= VK_ATTACHMENT_STORE_OP_STORE;
+        attachments[1].initialLayout		= VK_IMAGE_LAYOUT_UNDEFINED;
+        attachments[1].finalLayout			= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        attachments[1].flags				= VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT;
+    }
+
+    // Define the color buffer attachment binding point and layout information
+    VkAttachmentReference colorReference	= {};
+    colorReference.attachment				= 0;
+    colorReference.layout					= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    // Define the depth buffer attachment binding point and layout information
+    VkAttachmentReference depthReference = {};
+    depthReference.attachment				= 1;
+    depthReference.layout					= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    // Specify the attachments - color, depth, resolve, preserve etc.
+    VkSubpassDescription subpass			= {};
+    subpass.pipelineBindPoint				= VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.flags							= 0;
+    subpass.inputAttachmentCount			= 0;
+    subpass.pInputAttachments				= nullptr;
+    subpass.colorAttachmentCount			= 1;
+    subpass.pColorAttachments				= &colorReference;
+    subpass.pResolveAttachments				= nullptr;
+    subpass.pDepthStencilAttachment			= isDepthSupported ? &depthReference : nullptr;
+    subpass.preserveAttachmentCount			= 0;
+    subpass.pPreserveAttachments			= nullptr;
+
+    // Specify the attachement and subpass associate with render pass
+    VkRenderPassCreateInfo rpInfo			= {};
+    rpInfo.sType							= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    rpInfo.pNext							= nullptr;
+    rpInfo.attachmentCount					= isDepthSupported ? 2 : 1;
+    rpInfo.pAttachments						= attachments;
+    rpInfo.subpassCount						= 1;
+    rpInfo.pSubpasses						= &subpass;
+    rpInfo.dependencyCount					= 0;
+    rpInfo.pDependencies					= nullptr;
+
+    // Create the render pass object
+    result = vkCreateRenderPass(deviceObj->device, &rpInfo, nullptr, &renderPass);
+    assert(result == VK_SUCCESS);
+}
+
+void VulkanRenderer::createFrameBuffer(bool includeDepth) {
+    // Dependency on createDepthBuffer(), createRenderPass() and recordSwapChain()
+    VkResult  result;
+    VkImageView attachments[2];
+    attachments[1] = Depth.view;
+
+    VkFramebufferCreateInfo fbInfo	= {};
+    fbInfo.sType					= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    fbInfo.pNext					= nullptr;
+    fbInfo.renderPass				= renderPass;
+    fbInfo.attachmentCount			= includeDepth ? 2 : 1;
+    fbInfo.pAttachments				= attachments;
+    fbInfo.width					= width;
+    fbInfo.height					= height;
+    fbInfo.layers					= 1;
+
+    uint32_t i;
+
+    frameBuffers.clear();
+    frameBuffers.resize(swapChainObj->scPublicVars.swapchainImageCount);
+    for (i = 0; i < swapChainObj->scPublicVars.swapchainImageCount; i++) {
+        attachments[0] = swapChainObj->scPublicVars.colorBuffer[i].view;
+        result = vkCreateFramebuffer(deviceObj->device, &fbInfo, nullptr, &frameBuffers.at(i));
+        assert(result == VK_SUCCESS);
+    }
 }
 

@@ -16,3 +16,6 @@ public:
                                     const VkSubmitInfo *submitInfo = nullptr, const VkFence &fence = VK_NULL_HANDLE);
 
 };
+
+void *readFile(const char *spvFileName, size_t *fileSize);
+

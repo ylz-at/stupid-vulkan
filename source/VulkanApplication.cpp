@@ -118,6 +118,10 @@ void VulkanApplication::initialize() {
 
 void VulkanApplication::deInitialize()
 {
+    rendererObj->getShader()->destroyShaders();
+    rendererObj->destroyFramebuffers();
+    rendererObj->destroyRenderpass();
+    rendererObj->destroyDrawableVertexBuffer();
     rendererObj->destroyDepthBuffer();
     rendererObj->getSwapChain()->destroySwapChain();
     rendererObj->destroyCommandBuffer();
@@ -133,7 +137,7 @@ void VulkanApplication::deInitialize()
 
 void VulkanApplication::prepare()
 {
-    // Place holder, this will be utilized in the upcoming chapters
+    rendererObj->prepare();
 }
 
 void VulkanApplication::update()
