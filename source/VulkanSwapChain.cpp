@@ -359,5 +359,5 @@ void VulkanSwapChain::destroySwapChain()
     }
     fpDestroySwapchainKHR(deviceObj->device, scPublicVars.swapChain, NULL);
 
-    vkDestroySurfaceKHR(appObj->instanceObj.instance, scPublicVars.surface, NULL);
+    fpDestroySurfaceKHR(appObj->instanceObj.instance, scPublicVars.surface, NULL);
 }

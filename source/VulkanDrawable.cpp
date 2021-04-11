@@ -164,7 +164,7 @@ void VulkanDrawable::render() {
             .flags = 0,
     }, nullptr, &presentCompleteSemaphore);
 
-    Sleep(400);
+    Sleep(1);
 
     VkResult result = swapChainObj->fpAcquireNextImageKHR(deviceObj->device, swapChain, UINT64_MAX,
                                                           presentCompleteSemaphore, VK_NULL_HANDLE, &currentColorImage);
