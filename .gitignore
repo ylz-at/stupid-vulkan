@@ -61,6 +61,8 @@
 *.la
 *.a
 *.lib
+*.ilk
+*.pdb
 
 # Executables
 *.exe
