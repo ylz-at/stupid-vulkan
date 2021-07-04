@@ -14,7 +14,8 @@ public:
     void prepare();
 
     void render();
-
+    void setPipeline(VkPipeline* vulkanPipeline) { pipeline = vulkanPipeline; }
+    VkPipeline* getPipeline() {return pipeline;}
     void destroyVertexBuffer();
 
 public:
@@ -34,4 +35,5 @@ private:
 
     void recordCommandBuffer(int currentBuffer, VkCommandBuffer *cmdDraw);
     VulkanRenderer* rendererObj;
+    VkPipeline*		pipeline;
 };

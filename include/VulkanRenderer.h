@@ -4,6 +4,7 @@
 #include "VulkanSwapChain.h"
 #include "VulkanDrawable.h"
 #include "VulkanShader.h"
+#include "VulkanPipeline.h"
 
 #define NUM_SAMPLES VK_SAMPLE_COUNT_1_BIT
 
@@ -46,6 +47,8 @@ public:
 
     inline VulkanShader *getShader() { return &shaderObj; }
 
+    inline VulkanPipeline *getPipelineObject() { return &pipelineObj; }
+
     void createCommandPool();
 
     void buildSwapChainAndDepthImage();
@@ -60,6 +63,8 @@ public:
 
     void createFrameBuffer(bool includeDepth);
 
+    void createPipelineStateManagement();
+
     void destroyCommandBuffer();
 
     void destroyCommandPool();
@@ -71,6 +76,8 @@ public:
     void destroyRenderpass();
 
     void destroyFramebuffers();
+
+    void destroyPipeline();
 
 public:
 #ifdef _WIN32
@@ -97,6 +104,7 @@ public:
 
     VkRenderPass renderPass;
     std::vector<VkFramebuffer> frameBuffers; // Number of frame Buffers corresponding to each swap chain
+    std::vector<VkPipeline *> pipelineList; // List of pipelines
     int width, height;
 private:
     VulkanApplication *application;
@@ -104,4 +112,5 @@ private:
     VulkanSwapChain *swapChainObj;
     std::vector<VulkanDrawable *> drawableList;
     VulkanShader shaderObj;
+    VulkanPipeline pipelineObj;
 };

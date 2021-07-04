@@ -118,6 +118,8 @@ void VulkanApplication::initialize() {
 
 void VulkanApplication::deInitialize()
 {
+    rendererObj->destroyPipeline();
+    rendererObj->getPipelineObject()->destroyPipelineCache();
     rendererObj->getShader()->destroyShaders();
     rendererObj->destroyFramebuffers();
     rendererObj->destroyRenderpass();
