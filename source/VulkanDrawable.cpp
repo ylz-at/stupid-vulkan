@@ -9,9 +9,39 @@ VulkanDrawable::VulkanDrawable(VulkanRenderer *parent) {
     memset(&VertexBuffer, 0, sizeof(VertexBuffer));
 
     rendererObj = parent;
+
+    VkSemaphoreCreateInfo presentCompleteSemaphoreCreateInfo = {};
+    presentCompleteSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    presentCompleteSemaphoreCreateInfo.pNext = nullptr;
+    presentCompleteSemaphoreCreateInfo.flags = 0;
+
+    VkSemaphoreCreateInfo drawingCompleteSemaphoreCreateInfo = {};
+    drawingCompleteSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    drawingCompleteSemaphoreCreateInfo.pNext = nullptr;
+    drawingCompleteSemaphoreCreateInfo.flags = 0;
+
+    VulkanDevice *deviceObj = VulkanApplication::GetInstance()->deviceObj;
+    vkCreateSemaphore(deviceObj->device, &presentCompleteSemaphoreCreateInfo, nullptr, &presentCompleteSemaphore);
+    vkCreateSemaphore(deviceObj->device, &drawingCompleteSemaphoreCreateInfo, nullptr, &drawingCompleteSemaphore);
+
 }
 
-VulkanDrawable::~VulkanDrawable() {}
+VulkanDrawable::~VulkanDrawable() = default;
+
+void VulkanDrawable::destroyCommandBuffer() {
+    VulkanApplication *appObj = VulkanApplication::GetInstance();
+    VulkanDevice *deviceObj = appObj->deviceObj;
+    for (auto &i : vecCmdDraw) {
+        vkFreeCommandBuffers(deviceObj->device, rendererObj->cmdPool, 1, &i);
+    }
+}
+
+void VulkanDrawable::destroySynchronizationObjects() {
+    VulkanApplication *appObj = VulkanApplication::GetInstance();
+    VulkanDevice *deviceObj = appObj->deviceObj;
+    vkDestroySemaphore(deviceObj->device, presentCompleteSemaphore, nullptr);
+    vkDestroySemaphore(deviceObj->device, presentCompleteSemaphore, nullptr);
+}
 
 void VulkanDrawable::createVertexBuffer(const void *vertexData, uint32_t dataSize, uint32_t dataStride,
                                         bool useTexture) {
@@ -81,30 +111,33 @@ void VulkanDrawable::createVertexBuffer(const void *vertexData, uint32_t dataSiz
 
 }
 
+void VulkanDrawable::initViewports(VkCommandBuffer *cmd) {
+    viewport.height = (float) rendererObj->height;
+    viewport.width = (float) rendererObj->width;
+    viewport.minDepth = (float) 0.0f;
+    viewport.maxDepth = (float) 1.0f;
+    viewport.x = 0;
+    viewport.y = 0;
+    vkCmdSetViewport(*cmd, 0, NUMBER_OF_VIEWPORTS, &viewport);
+}
+
+void VulkanDrawable::initScissors(VkCommandBuffer *cmd) {
+    scissor.extent.height = rendererObj->height;
+    scissor.extent.width = rendererObj->width;
+    scissor.offset.x = 0;
+    scissor.offset.y = 0;
+    vkCmdSetScissor(*cmd, 0, NUMBER_OF_SCISSORS, &scissor);
+}
+
 void VulkanDrawable::destroyVertexBuffer() {
     vkDestroyBuffer(rendererObj->getDevice()->device, VertexBuffer.buf, nullptr);
     vkFreeMemory(rendererObj->getDevice()->device, VertexBuffer.mem, nullptr);
 }
 
 void VulkanDrawable::recordCommandBuffer(int currentBuffer, VkCommandBuffer *cmdDraw) {
+    VulkanDevice *deviceObj = rendererObj->getDevice();
     VkClearValue clearValues[2];
-    switch (currentBuffer) {
-        case 0:
-            clearValues[0].color = {1.0f, 0.0f, 0.0f, 0.0f};
-            break;
-
-        case 1:
-            clearValues[0].color = {0.0f, 1.0f, 0.0f, 0.0f};
-            break;
-
-        case 2:
-            clearValues[0].color = {0.0f, 0.0f, 1.0f, 0.0f};
-            break;
-
-        default:
-            clearValues[0].color = {0.0f, 0.0f, 0.0f, 0.0f};
-            break;
-    }
+    clearValues[0].color = {0.0f, 0.0f, 0.0f, 0.0f};
 
     // Specify the depth/stencil clear value
     clearValues[1].depthStencil.depth = 1.0f;
@@ -129,13 +162,26 @@ void VulkanDrawable::recordCommandBuffer(int currentBuffer, VkCommandBuffer *cmd
 
     }, VK_SUBPASS_CONTENTS_INLINE);
 
+    // Bound the pi with the graphics pipeline
+    vkCmdBindPipeline(*cmdDraw, VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline);
+
+    // Bound the command buffer with the vertex buffer
+    const VkDeviceSize offsets[1] = {0};
+    vkCmdBindVertexBuffers(*cmdDraw, 0, 1, &VertexBuffer.buf, offsets);
+
+    initViewports(cmdDraw);
+    initScissors(cmdDraw);
+
+    vkCmdDraw(*cmdDraw, 3, 1, 0, 0);
+
+    // End of render pass instance recording
     vkCmdEndRenderPass(*cmdDraw);
 }
 
 void VulkanDrawable::prepare() {
     VulkanDevice *deviceObj = rendererObj->getDevice();
     vecCmdDraw.resize(rendererObj->getSwapChain()->scPublicVars.colorBuffer.size());
-    // For each swapbuffer color surface image buffer
+    // For each swapBuffer color surface image buffer
     // allocate the corresponding command buffer
     for (int i = 0; i < rendererObj->getSwapChain()->scPublicVars.colorBuffer.size(); i++) {
         // Allocate, create and start command buffer recording
@@ -157,26 +203,35 @@ void VulkanDrawable::render() {
     uint32_t &currentColorImage = swapChainObj->scPublicVars.currentColorBuffer;
     VkSwapchainKHR &swapChain = swapChainObj->scPublicVars.swapChain;
 
-    VkSemaphore presentCompleteSemaphore;
-    vkCreateSemaphore(deviceObj->device, new VkSemaphoreCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-    }, nullptr, &presentCompleteSemaphore);
-
-    Sleep(1);
+    VkFence nullFence = VK_NULL_HANDLE;
 
     VkResult result = swapChainObj->fpAcquireNextImageKHR(deviceObj->device, swapChain, UINT64_MAX,
                                                           presentCompleteSemaphore, VK_NULL_HANDLE, &currentColorImage);
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pNext = nullptr;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &presentCompleteSemaphore;
+    VkPipelineStageFlags submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    submitInfo.pWaitDstStageMask = &submitPipelineStages;
+    submitInfo.commandBufferCount = (uint32_t) sizeof(&vecCmdDraw[currentColorImage]) / sizeof(VkCommandBuffer);
+    submitInfo.pCommandBuffers = &vecCmdDraw[currentColorImage];
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &drawingCompleteSemaphore;
+
+
     // Queue the command buffer for execution
-    CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &vecCmdDraw[currentColorImage], nullptr);
+    CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &vecCmdDraw[currentColorImage], &submitInfo);
     swapChainObj->fpQueuePresentKHR(deviceObj->queue, new VkPresentInfoKHR{
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .pNext = nullptr,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &drawingCompleteSemaphore,
             .swapchainCount = 1,
             .pSwapchains = &swapChain,
             .pImageIndices = &currentColorImage,
+            .pResults = nullptr,
     });
     assert(result == VK_SUCCESS);
-
-    vkDestroySemaphore(deviceObj->device, presentCompleteSemaphore, nullptr);
 }

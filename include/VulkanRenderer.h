@@ -79,6 +79,10 @@ public:
 
     void destroyPipeline();
 
+    void destroyDrawableCommandBuffer();
+
+    void destroyDrawableSynchronizationObjects();
+
 public:
 #ifdef _WIN32
 #define APP_NAME_STR_LEN 80

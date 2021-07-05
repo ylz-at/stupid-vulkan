@@ -552,3 +552,14 @@ void VulkanRenderer::destroyPipeline() {
     pipelineList.clear();
 }
 
+void VulkanRenderer::destroyDrawableCommandBuffer() {
+    for (auto *drawableObj : drawableList) {
+        drawableObj->destroyCommandBuffer();
+    }
+}
+
+void VulkanRenderer::destroyDrawableSynchronizationObjects() {
+    for (auto *drawableObj : drawableList) {
+        drawableObj->destroySynchronizationObjects();
+    }
+}

@@ -1,4 +1,5 @@
 #include "VulkanApplication.h"
+#include "VulkanDrawable.h"
 
 std::unique_ptr<VulkanApplication> VulkanApplication::instance;
 std::once_flag VulkanApplication::onlyOnce;
@@ -124,9 +125,11 @@ void VulkanApplication::deInitialize()
     rendererObj->destroyFramebuffers();
     rendererObj->destroyRenderpass();
     rendererObj->destroyDrawableVertexBuffer();
+    rendererObj->destroyDrawableCommandBuffer();
     rendererObj->destroyDepthBuffer();
     rendererObj->getSwapChain()->destroySwapChain();
     rendererObj->destroyCommandBuffer();
+    rendererObj->destroyDrawableSynchronizationObjects();
     rendererObj->destroyCommandPool();
     rendererObj->destroyPresentationWindow();
 

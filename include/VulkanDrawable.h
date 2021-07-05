@@ -1,12 +1,13 @@
 #pragma once
+
 #include "Headers.h"
 
 class VulkanRenderer;
 
-class VulkanDrawable
-{
+class VulkanDrawable {
 public:
     explicit VulkanDrawable(VulkanRenderer *parent = nullptr);
+
     ~VulkanDrawable();
 
     void createVertexBuffer(const void *vertexData, uint32_t dataSize, uint32_t dataStride, bool useTexture);
@@ -14,9 +15,20 @@ public:
     void prepare();
 
     void render();
-    void setPipeline(VkPipeline* vulkanPipeline) { pipeline = vulkanPipeline; }
-    VkPipeline* getPipeline() {return pipeline;}
+
+    void initViewports(VkCommandBuffer *cmd);
+
+    void initScissors(VkCommandBuffer *cmd);
+
+    void setPipeline(VkPipeline *vulkanPipeline) { pipeline = vulkanPipeline; }
+
+    VkPipeline *getPipeline() { return pipeline; }
+
     void destroyVertexBuffer();
+
+    void destroyCommandBuffer();
+
+    void destroySynchronizationObjects();
 
 public:
 
@@ -34,6 +46,11 @@ private:
     std::vector<VkCommandBuffer> vecCmdDraw;
 
     void recordCommandBuffer(int currentBuffer, VkCommandBuffer *cmdDraw);
-    VulkanRenderer* rendererObj;
-    VkPipeline*		pipeline;
+
+    VkViewport viewport;
+    VkRect2D scissor;
+    VkSemaphore presentCompleteSemaphore;
+    VkSemaphore drawingCompleteSemaphore;
+    VulkanRenderer *rendererObj;
+    VkPipeline *pipeline;
 };

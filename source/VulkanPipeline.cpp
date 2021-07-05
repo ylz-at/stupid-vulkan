@@ -93,7 +93,7 @@ bool VulkanPipeline::createPipeline(VulkanDrawable *drawableObj, VkPipeline *pip
     colorBlendStateCreateInfo.attachmentCount = 1;
     colorBlendStateCreateInfo.pAttachments = colorBlendAttachmentStateInfo;
     colorBlendStateCreateInfo.logicOpEnable = VK_FALSE;
-    colorBlendStateCreateInfo.logicOp = VK_LOGIC_OP_NO_OP;
+//    colorBlendStateCreateInfo.logicOp = VK_LOGIC_OP_NO_OP;
     colorBlendStateCreateInfo.blendConstants[0] = 1.0f;
     colorBlendStateCreateInfo.blendConstants[1] = 1.0f;
     colorBlendStateCreateInfo.blendConstants[2] = 1.0f;
