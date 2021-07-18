@@ -322,7 +322,8 @@ void VulkanRenderer::createVertexBuffer() {
     CommandBufferMgr::beginCommandBuffer(cmdVertexBuffer);
 
     for (VulkanDrawable *drawableObj : drawableList) {
-        drawableObj->createVertexBuffer(triangleData, sizeof(triangleData), sizeof(triangleData[0]), false);
+        drawableObj->createVertexBuffer(squareData, sizeof(squareData), sizeof(squareData[0]), false);
+        drawableObj->createVertexIndex(squareIndices, sizeof(squareIndices), 0);
     }
     CommandBufferMgr::endCommandBuffer(cmdVertexBuffer);
     CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &cmdVertexBuffer);
@@ -365,6 +366,7 @@ void VulkanRenderer::destroyRenderpass() {
 void VulkanRenderer::destroyDrawableVertexBuffer() {
     for (auto drawableObj : drawableList) {
         drawableObj->destroyVertexBuffer();
+        drawableObj->destroyVertexIndex();
     }
 }
 
@@ -531,7 +533,7 @@ void VulkanRenderer::createPipelineStateManagement() {
     // UNIFORM Buffer variable initialization starts here
     pipelineObj.createPipelineCache();
 
-    const bool depthPresent = true;
+    const bool depthPresent = false;
     for (VulkanDrawable *drawable : drawableList) {
         auto *pipeline = (VkPipeline *) malloc(sizeof(VkPipeline));
         if (pipelineObj.createPipeline(drawable, pipeline, &shaderObj, depthPresent)) {

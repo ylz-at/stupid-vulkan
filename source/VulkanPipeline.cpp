@@ -65,7 +65,7 @@ bool VulkanPipeline::createPipeline(VulkanDrawable *drawableObj, VkPipeline *pip
     rasterStateCreateInfo.pNext = nullptr;
     rasterStateCreateInfo.flags = 0;
     rasterStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterStateCreateInfo.cullMode = VK_CULL_MODE_NONE;
     rasterStateCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterStateCreateInfo.depthClampEnable = includeDepth;
     rasterStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;

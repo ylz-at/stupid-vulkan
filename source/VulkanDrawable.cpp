@@ -165,14 +165,19 @@ void VulkanDrawable::recordCommandBuffer(int currentBuffer, VkCommandBuffer *cmd
     // Bound the pi with the graphics pipeline
     vkCmdBindPipeline(*cmdDraw, VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline);
 
-    // Bound the command buffer with the vertex buffer
+    // Bind the vertex buffer
     const VkDeviceSize offsets[1] = {0};
     vkCmdBindVertexBuffers(*cmdDraw, 0, 1, &VertexBuffer.buf, offsets);
+
+    // Bind the Index buffer
+    vkCmdBindIndexBuffer(*cmdDraw, VertexIndex.idx, 0, VK_INDEX_TYPE_UINT16);
 
     initViewports(cmdDraw);
     initScissors(cmdDraw);
 
     vkCmdDraw(*cmdDraw, 3, 1, 0, 0);
+    // Draw the object using indexed draw API
+    vkCmdDrawIndexed(*cmdDraw, 6, 1, 0, 0, 0);
 
     // End of render pass instance recording
     vkCmdEndRenderPass(*cmdDraw);
@@ -234,4 +239,71 @@ void VulkanDrawable::render() {
             .pResults = nullptr,
     });
     assert(result == VK_SUCCESS);
+}
+
+void VulkanDrawable::createVertexIndex(const void *indexData, uint32_t dataSize, uint32_t dataStride) {
+    VulkanApplication *appObj = VulkanApplication::GetInstance();
+    VulkanDevice *deviceObj = appObj->deviceObj;
+
+    VkResult result;
+    bool pass;
+
+    // Create the Buffer resource metadata information
+    VkBufferCreateInfo bufInfo = {};
+    bufInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufInfo.pNext = nullptr;
+    bufInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    bufInfo.size = dataSize;
+    bufInfo.queueFamilyIndexCount = 0;
+    bufInfo.pQueueFamilyIndices = nullptr;
+    bufInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    bufInfo.flags = 0;
+
+    // Create the Buffer resource
+    result = vkCreateBuffer(deviceObj->device, &bufInfo, nullptr, &VertexIndex.idx);
+    assert(result == VK_SUCCESS);
+
+    // Get the Buffer resource requirements
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(deviceObj->device, VertexIndex.idx, &memRequirements);
+
+    // Create memory allocation metadata information
+    VkMemoryAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.pNext = nullptr;
+    allocInfo.memoryTypeIndex = 0;
+    allocInfo.allocationSize = memRequirements.size;
+
+    // Get the compatible type of memory
+    pass = deviceObj->memoryTypeFromProperties(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                               &allocInfo.memoryTypeIndex);
+    assert(pass);
+
+    // Allocate the physical baking for buffer resource
+    result = vkAllocateMemory(deviceObj->device, &allocInfo, nullptr, &(VertexIndex.mem));
+    assert(result == VK_SUCCESS);
+    VertexIndex.bufferInfo.range = memRequirements.size;
+    VertexIndex.bufferInfo.offset = 0;
+
+    // Map the physical device memory region to the host
+    uint8_t *pData;
+    result = vkMapMemory(deviceObj->device, VertexIndex.mem, 0, memRequirements.size, 0, (void **) &pData);
+    assert(result == VK_SUCCESS);
+
+    // Copy the data in the mapped memory
+    memcpy(pData, indexData, dataSize);
+
+    // Unmap the device memory
+    vkUnmapMemory(deviceObj->device, VertexIndex.mem);
+
+    // Bind the allocated buffer resource to the device memory
+    result = vkBindBufferMemory(deviceObj->device, VertexIndex.idx, VertexIndex.mem, 0);
+    assert(result == VK_SUCCESS);
+}
+
+void VulkanDrawable::destroyVertexIndex() {
+    vkDestroyBuffer(rendererObj->getDevice()->device, VertexIndex.idx, nullptr);
+    vkFreeMemory(rendererObj->getDevice()->device, VertexIndex.mem, nullptr);
+
 }

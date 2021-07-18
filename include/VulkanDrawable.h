@@ -11,6 +11,7 @@ public:
     ~VulkanDrawable();
 
     void createVertexBuffer(const void *vertexData, uint32_t dataSize, uint32_t dataStride, bool useTexture);
+    void createVertexIndex(const void *indexData, uint32_t dataSize, uint32_t dataStride);
 
     void prepare();
 
@@ -25,6 +26,7 @@ public:
     VkPipeline *getPipeline() { return pipeline; }
 
     void destroyVertexBuffer();
+    void destroyVertexIndex();
 
     void destroyCommandBuffer();
 
@@ -38,6 +40,12 @@ public:
         VkDeviceMemory mem;
         VkDescriptorBufferInfo bufferInfo;
     } VertexBuffer;
+
+    struct {
+        VkBuffer idx;
+        VkDeviceMemory mem;
+        VkDescriptorBufferInfo bufferInfo;
+    } VertexIndex;
 
     VkVertexInputBindingDescription viIpBind;
 
