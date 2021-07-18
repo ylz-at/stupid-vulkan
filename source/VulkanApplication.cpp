@@ -15,16 +15,18 @@ VulkanApplication::VulkanApplication() {
     deviceObj = nullptr;
     debugFlag = false;
     rendererObj = nullptr;
+    isPrepared = false;
+    isResizing = false;
 }
 
-VulkanApplication::~VulkanApplication(){
+VulkanApplication::~VulkanApplication() {
     delete rendererObj;
     rendererObj = nullptr;
 }
 
 // Returns the Singleton object of VulkanApplication
-VulkanApplication* VulkanApplication::GetInstance(){
-    std::call_once(onlyOnce, [](){instance.reset(new VulkanApplication());});
+VulkanApplication *VulkanApplication::GetInstance() {
+    std::call_once(onlyOnce, []() { instance.reset(new VulkanApplication()); });
     return instance.get();
 }
 
@@ -105,7 +107,6 @@ void VulkanApplication::initialize() {
     }
 
     // Get the list of physical devices on the system, there might be multiple Physical GPUs.
-    std::vector<VkPhysicalDevice> gpus;
     enumeratePhysicalDevices(gpus);
 
     // This example use only one device which is available first.
@@ -113,12 +114,42 @@ void VulkanApplication::initialize() {
         handShakeWithDevice(&gpus[0], layerNames, deviceExtensionNames);
     }
 
-    rendererObj = new VulkanRenderer(this, deviceObj);
+    if (!rendererObj) {
+        rendererObj = new VulkanRenderer(this, deviceObj);
+
+        // Create an empty window 500x500
+        rendererObj->createPresentationWindow(500, 500);
+
+        // Initialize swapChain
+        rendererObj->getSwapChain()->initializeSwapChain();
+    }
     rendererObj->initialize();
 }
 
-void VulkanApplication::deInitialize()
-{
+void VulkanApplication::resize() {
+    // If prepared then only proceed for
+    if (!isPrepared) {
+        return;
+    }
+
+    isResizing = true;
+
+    vkDeviceWaitIdle(deviceObj->device);
+    rendererObj->destroyFramebuffers();
+    rendererObj->destroyCommandPool();
+    rendererObj->destroyPipeline();
+    rendererObj->getPipelineObject()->destroyPipelineCache();
+    rendererObj->destroyRenderpass();
+    rendererObj->getSwapChain()->destroySwapChain();
+    rendererObj->destroyDrawableVertexBuffer();
+    rendererObj->destroyDepthBuffer();
+    rendererObj->initialize();
+    prepare();
+
+    isResizing = false;
+}
+
+void VulkanApplication::deInitialize() {
     rendererObj->destroyPipeline();
     rendererObj->getPipelineObject()->destroyPipelineCache();
     rendererObj->getShader()->destroyShaders();
@@ -140,19 +171,21 @@ void VulkanApplication::deInitialize()
     instanceObj.destroyInstance();
 }
 
-void VulkanApplication::prepare()
-{
+void VulkanApplication::prepare() {
+    isPrepared = false;
     rendererObj->prepare();
+    isPrepared = true;
 }
 
-void VulkanApplication::update()
-{
+void VulkanApplication::update() {
     // Place holder, this will be utilized in the upcoming chapters
 }
 
-bool VulkanApplication::render()
-{
+bool VulkanApplication::render() {
     // Place holder, this will be utilized in the upcoming chapters
+    if (!isPrepared) {
+        return false;
+    }
     return rendererObj->render();
 }
 

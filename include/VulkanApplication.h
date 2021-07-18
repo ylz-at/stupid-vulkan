@@ -1,4 +1,5 @@
 #pragma once
+
 #include "VulkanInstance.h"
 #include "VulkanDevice.h"
 #include "VulkanRenderer.h"
@@ -19,12 +20,15 @@ private:
 
 private:
     bool debugFlag;
+    std::vector<VkPhysicalDevice> gpus;
 
 public:
     // Vulkan Instance object
     VulkanInstance instanceObj;
-    VulkanDevice* deviceObj;
-    VulkanRenderer* rendererObj;
+    VulkanDevice *deviceObj;
+    VulkanRenderer *rendererObj;
+    bool isPrepared;
+    bool isResizing;
 
     static VulkanApplication *GetInstance();
 
@@ -35,6 +39,8 @@ public:
 
     void update();
 
+    void resize();
+
     bool render();
 
     void deInitialize();
@@ -43,6 +49,9 @@ private:
     // Create the vulkan instance object
     VkResult createVulkanInstance(std::vector<const char *> &layers, std::vector<const char *> &extensions,
                                   const char *appName);
-    VkResult handShakeWithDevice(VkPhysicalDevice* gpu, std::vector<const char *>& layers, std::vector<const char *>& extensions);
-    VkResult enumeratePhysicalDevices(std::vector<VkPhysicalDevice>& gpus);
+
+    VkResult handShakeWithDevice(VkPhysicalDevice *gpu, std::vector<const char *> &layers,
+                                 std::vector<const char *> &extensions);
+
+    VkResult enumeratePhysicalDevices(std::vector<VkPhysicalDevice> &gpus);
 };

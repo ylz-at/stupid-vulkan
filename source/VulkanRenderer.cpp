@@ -21,14 +21,13 @@ VulkanRenderer::VulkanRenderer(VulkanApplication *app, VulkanDevice *deviceObjec
 VulkanRenderer::~VulkanRenderer() {
     delete swapChainObj;
     swapChainObj = nullptr;
+    for (auto d : drawableList) {
+        delete d;
+    }
+    drawableList.clear();
 }
 
 void VulkanRenderer::initialize() {
-    // Create an empty window 500x500
-    createPresentationWindow(500, 500);
-
-    // Initialize swapchain
-    swapChainObj->initializeSwapChain();
 
     // We need command buffers, so create a command buffer pool
     createCommandPool();
@@ -88,6 +87,15 @@ LRESULT CALLBACK VulkanRenderer::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
             }
 
             return 0;
+        case WM_SIZE:
+            if (wParam != SIZE_MINIMIZED) {
+                appObj->rendererObj->width = lParam & 0xffff;
+                appObj->rendererObj->height = (lParam & 0xffff0000) >> 16;
+                appObj->rendererObj->getSwapChain()->setSwapChainExtent(appObj->rendererObj->width,
+                                                                        appObj->rendererObj->height);
+                appObj->resize();
+            }
+            break;
         default:
             break;
     }
@@ -101,7 +109,7 @@ void VulkanRenderer::createPresentationWindow(const int &windowWidth, const int 
     assert(width > 0 || height > 0);
 
     WNDCLASSEX winInfo;
-    sprintf(name, "SwapChain presentation window");
+    sprintf(name, "Learning Vulkan");
     memset(&winInfo, 0, sizeof(WNDCLASSEX));
     winInfo.cbSize = sizeof(WNDCLASSEX);
     winInfo.style = CS_HREDRAW | CS_VREDRAW;
@@ -330,6 +338,9 @@ void VulkanRenderer::createVertexBuffer() {
 }
 
 void VulkanRenderer::createShaders() {
+    if (application->isResizing) {
+        return;
+    }
     void *vertShaderCode, *fragShaderCode;
     size_t sizeVert, sizeFrag;
 

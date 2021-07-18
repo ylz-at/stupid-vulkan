@@ -49,6 +49,8 @@ public:
 
     void destroySwapChain();
 
+    void setSwapChainExtent(uint32_t width, uint32_t height);
+
 private:
     VkResult createSwapChainExtensions();
 
