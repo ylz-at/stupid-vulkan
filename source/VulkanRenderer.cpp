@@ -576,7 +576,7 @@ void VulkanRenderer::createPipelineStateManagement() {
     }
     pipelineObj.createPipelineCache();
 
-    const bool depthPresent = false;
+    const bool depthPresent = VkBool32(true);
     for (VulkanDrawable *drawable : drawableList) {
         auto *pipeline = (VkPipeline *) malloc(sizeof(VkPipeline));
         if (pipelineObj.createPipeline(drawable, pipeline, &shaderObj, depthPresent)) {
