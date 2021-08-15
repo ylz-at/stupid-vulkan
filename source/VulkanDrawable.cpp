@@ -40,7 +40,7 @@ void VulkanDrawable::destroySynchronizationObjects() {
     VulkanApplication *appObj = VulkanApplication::GetInstance();
     VulkanDevice *deviceObj = appObj->deviceObj;
     vkDestroySemaphore(deviceObj->device, presentCompleteSemaphore, nullptr);
-    vkDestroySemaphore(deviceObj->device, presentCompleteSemaphore, nullptr);
+    vkDestroySemaphore(deviceObj->device, drawingCompleteSemaphore, nullptr);
 }
 
 void VulkanDrawable::createVertexBuffer(const void *vertexData, uint32_t dataSize, uint32_t dataStride,
