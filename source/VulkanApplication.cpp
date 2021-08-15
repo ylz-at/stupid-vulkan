@@ -13,7 +13,7 @@ VulkanApplication::VulkanApplication() {
     instanceObj.layerExtension.getInstanceLayerProperties();
 
     deviceObj = nullptr;
-    debugFlag = false;
+    debugFlag = true;
     rendererObj = nullptr;
     isPrepared = false;
     isResizing = false;

@@ -69,6 +69,8 @@ public:
 
     void createDescriptors();
 
+    void createPushConstants();
+
     void destroyCommandBuffer();
 
     void destroyCommandPool();
@@ -108,9 +110,10 @@ public:
         VkImageView view;
     } Depth;
 
-    VkCommandBuffer cmdDepthImage;
     VkCommandPool cmdPool;
+    VkCommandBuffer cmdDepthImage;
     VkCommandBuffer cmdVertexBuffer;
+    VkCommandBuffer cmdPushConstant;
 
     VkRenderPass renderPass;
     std::vector<VkFramebuffer> frameBuffers; // Number of frame Buffers corresponding to each swap chain
@@ -123,4 +126,5 @@ private:
     std::vector<VulkanDrawable *> drawableList;
     VulkanShader shaderObj;
     VulkanPipeline pipelineObj;
+    const bool includeDepth = true;
 };

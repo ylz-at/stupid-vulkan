@@ -26,6 +26,8 @@ public:
 
     void initScissors(VkCommandBuffer *cmd);
 
+    void initPushConstant(VkCommandBuffer *cmd);
+
     void setPipeline(VkPipeline *vulkanPipeline) { pipeline = vulkanPipeline; }
 
     VkPipeline *getPipeline() { return pipeline; }

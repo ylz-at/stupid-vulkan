@@ -294,6 +294,34 @@ void VulkanDrawable::initScissors(VkCommandBuffer *cmd) {
     vkCmdSetScissor(*cmd, 0, NUMBER_OF_SCISSORS, &scissor);
 }
 
+void VulkanDrawable::initPushConstant(VkCommandBuffer *cmd){
+    enum ColorFlag {
+        RED = 1,
+        GREEN = 2,
+        BLUE = 3,
+        MIXED_COLOR = 4,
+    };
+
+    float mixerValue = 0.3f;
+    unsigned constColorRGBFlag = MIXED_COLOR;
+
+    // Create push constant data, this contain a constant
+    // color flag and mixer value for non-const color
+    unsigned pushConstants[2] = {};
+    pushConstants[0] = constColorRGBFlag;
+    memcpy(&pushConstants[1], &mixerValue, sizeof(float));
+
+    // Check if number of push constants does not exceed the allowed size
+    uint32_t maxPushConstantSize = deviceObj->gpuProps.limits.maxPushConstantsSize;
+    if (sizeof(pushConstants) > maxPushConstantSize) {
+        assert(0);
+        printf("Push constant size is greater than expected, max allow size is %d", maxPushConstantSize);
+    }
+
+    vkCmdPushConstants(*cmd, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                       sizeof(pushConstants), pushConstants);
+}
+
 void VulkanDrawable::destroyVertexBuffer() {
     vkDestroyBuffer(rendererObj->getDevice()->device, VertexBuffer.buf, nullptr);
     vkFreeMemory(rendererObj->getDevice()->device, VertexBuffer.mem, nullptr);
@@ -343,6 +371,7 @@ void VulkanDrawable::recordCommandBuffer(int currentBuffer, VkCommandBuffer *cmd
 
     initViewports(cmdDraw);
     initScissors(cmdDraw);
+    initPushConstant(cmdDraw);
 
     vkCmdDraw(*cmdDraw, 3 * 2 * 6, 1, 0, 0);
     // End of render pass instance recording
@@ -555,12 +584,19 @@ void VulkanDrawable::createDescriptorSetLayout(bool useTexture)
 // Creates the pipeline layout to inject into the pipeline
 void VulkanDrawable::createPipelineLayout()
 {
+    // Set up the push constant range
+    const unsigned pushConstantRangeCount = 1;
+    VkPushConstantRange pushConstantRanges[pushConstantRangeCount] = {};
+    pushConstantRanges[0].stageFlags 	= VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConstantRanges[0].offset 		= 0;
+    pushConstantRanges[0].size 			= 8;
+
     // Create the pipeline layout with the help of descriptor layout.
     VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
     pPipelineLayoutCreateInfo.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pPipelineLayoutCreateInfo.pNext						= nullptr;
-    pPipelineLayoutCreateInfo.pushConstantRangeCount	= 0;
-    pPipelineLayoutCreateInfo.pPushConstantRanges		= nullptr;
+    pPipelineLayoutCreateInfo.pushConstantRangeCount	= pushConstantRangeCount;
+    pPipelineLayoutCreateInfo.pPushConstantRanges		= pushConstantRanges;
     pPipelineLayoutCreateInfo.setLayoutCount			= (uint32_t)descLayout.size();
     pPipelineLayoutCreateInfo.pSetLayouts				= descLayout.data();
 

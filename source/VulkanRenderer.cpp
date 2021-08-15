@@ -38,8 +38,6 @@ void VulkanRenderer::initialize() {
     // Build the vertex buffer
     createVertexBuffer();
 
-    const bool includeDepth = true;
-
     // Create the render pass now..
     createRenderPass(includeDepth);
 
@@ -54,6 +52,9 @@ void VulkanRenderer::initialize() {
 
     // Manage the pipeline state objects
     createPipelineStateManagement();
+
+    // Build the push constants
+    createPushConstants();
 }
 
 void VulkanRenderer::prepare() {
@@ -358,8 +359,8 @@ void VulkanRenderer::createShaders() {
 
     shaderObj.buildShader((const char*)vertShaderCode, (const char*)fragShaderCode);
 #else
-    vertShaderCode = readFile("./../Draw-vert.spv", &sizeVert);
-    fragShaderCode = readFile("./../Draw-frag.spv", &sizeFrag);
+    vertShaderCode = readFile("Draw.vert.spv", &sizeVert);
+    fragShaderCode = readFile("Draw.frag.spv", &sizeFrag);
 
     shaderObj.buildShaderModuleWithSPV((uint32_t *) vertShaderCode, sizeVert, (uint32_t *) fragShaderCode, sizeFrag);
 #endif
@@ -379,6 +380,44 @@ void VulkanRenderer::createDescriptors() {
     }
 
 }
+
+// this is not used
+void VulkanRenderer::createPushConstants() {
+    CommandBufferMgr::allocCommandBuffer(&deviceObj->device, cmdPool, &cmdPushConstant);
+    CommandBufferMgr::beginCommandBuffer(cmdPushConstant);
+
+    enum ColorFlag {
+        RED = 1,
+        GREEN = 2,
+        BLUE = 3,
+        MIXED_COLOR = 4,
+    };
+
+    float mixerValue = 0.3f;
+    unsigned constColorRGBFlag = MIXED_COLOR;
+
+    // Create push constant data, this contain a constant
+    // color flag and mixer value for non-const color
+    unsigned pushConstants[2] = {};
+    pushConstants[0] = constColorRGBFlag;
+    memcpy(&pushConstants[1], &mixerValue, sizeof(float));
+
+    // Check if number of push constants does not exceed the allowed size
+    int maxPushConstantSize = getDevice()->gpuProps.limits.maxPushConstantsSize;
+    if (sizeof(pushConstants) > maxPushConstantSize) {
+        assert(0);
+        printf("Push constant size is greater than expected, max allow size is %d", maxPushConstantSize);
+    }
+
+    for (auto drawableObj : drawableList) {
+        vkCmdPushConstants(cmdPushConstant, drawableObj->pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                           sizeof(pushConstants), pushConstants);
+    }
+
+    CommandBufferMgr::endCommandBuffer(cmdPushConstant);
+    CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &cmdPushConstant);
+}
+
 
 void VulkanRenderer::destroyFramebuffers() {
     for (uint32_t i = 0; i < swapChainObj->scPublicVars.swapchainImageCount; i++) {
@@ -411,7 +450,7 @@ void VulkanRenderer::destroyDrawableUniformBuffer() {
 }
 
 void VulkanRenderer::destroyCommandBuffer() {
-    VkCommandBuffer cmdBufs[] = {cmdDepthImage};
+    VkCommandBuffer cmdBufs[] = {cmdDepthImage, cmdVertexBuffer, cmdPushConstant};
     vkFreeCommandBuffers(deviceObj->device, cmdPool, sizeof(cmdBufs) / sizeof(VkCommandBuffer), cmdBufs);
 }
 
@@ -576,10 +615,9 @@ void VulkanRenderer::createPipelineStateManagement() {
     }
     pipelineObj.createPipelineCache();
 
-    const bool depthPresent = VkBool32(true);
     for (VulkanDrawable *drawable : drawableList) {
         auto *pipeline = (VkPipeline *) malloc(sizeof(VkPipeline));
-        if (pipelineObj.createPipeline(drawable, pipeline, &shaderObj, depthPresent)) {
+        if (pipelineObj.createPipeline(drawable, pipeline, &shaderObj, includeDepth)) {
             pipelineList.push_back(pipeline);
             drawable->setPipeline(pipeline);
         } else {

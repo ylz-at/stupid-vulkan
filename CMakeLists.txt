@@ -87,6 +87,15 @@ set_property(TARGET ${Recipe_Name} PROPERTY RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBI
 set_property(TARGET ${Recipe_Name} PROPERTY CXX_STANDARD 20)
 set_property(TARGET ${Recipe_Name} PROPERTY CXX_STANDARD_REQUIRED ON)
 
-set_property(TARGET ${Recipe_Name} PROPERTY C_STANDARD 99)
+set_property(TARGET ${Recipe_Name} PROPERTY C_STANDARD 20)
 set_property(TARGET ${Recipe_Name} PROPERTY C_STANDARD_REQUIRED ON)
 
+set(resources Draw.vert.spv Draw.frag.spv)
+foreach(resource IN LISTS resources)
+    add_custom_command(
+            TARGET ${Recipe_Name} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${CMAKE_CURRENT_SOURCE_DIR}/${resource}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/binaries/${resource}
+    )
+endforeach()
