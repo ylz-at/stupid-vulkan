@@ -24,6 +24,11 @@
 #include <memory>
 #include <mutex>
 
+/*********** GLM HEADER FILES ***********/
+#define GLM_FORCE_RADIANS
+#include "glm/glm.hpp"
+#include <glm/gtc/matrix_transform.hpp>
+
 /*********** VULKAN HEADER FILES ***********/
 #include <vulkan/vulkan.h>
 #ifdef AUTO_COMPILE_GLSL_TO_SPV

@@ -22,6 +22,8 @@ public:
 
     bool render();
 
+    void update();
+
     // Create an empty window
     void createPresentationWindow(const int &windowWidth = 500, const int &windowHeight = 500);
 
@@ -65,6 +67,8 @@ public:
 
     void createPipelineStateManagement();
 
+    void createDescriptors();
+
     void destroyCommandBuffer();
 
     void destroyCommandPool();
@@ -82,6 +86,8 @@ public:
     void destroyDrawableCommandBuffer();
 
     void destroyDrawableSynchronizationObjects();
+
+    void destroyDrawableUniformBuffer();
 
 public:
 #ifdef _WIN32

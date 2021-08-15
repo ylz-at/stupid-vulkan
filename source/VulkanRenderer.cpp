@@ -49,6 +49,9 @@ void VulkanRenderer::initialize() {
     // Create the vertex and fragment shader
     createShaders();
 
+    // Create descriptor set layout
+    createDescriptors();
+
     // Manage the pipeline state objects
     createPipelineStateManagement();
 }
@@ -56,6 +59,12 @@ void VulkanRenderer::initialize() {
 void VulkanRenderer::prepare() {
     for (auto drawableObj : drawableList) {
         drawableObj->prepare();
+    }
+}
+
+void VulkanRenderer::update() {
+    for (VulkanDrawable *drawableObj : drawableList) {
+        drawableObj->update();
     }
 }
 
@@ -330,8 +339,7 @@ void VulkanRenderer::createVertexBuffer() {
     CommandBufferMgr::beginCommandBuffer(cmdVertexBuffer);
 
     for (VulkanDrawable *drawableObj : drawableList) {
-        drawableObj->createVertexBuffer(squareData, sizeof(squareData), sizeof(squareData[0]), false);
-        drawableObj->createVertexIndex(squareIndices, sizeof(squareIndices), 0);
+        drawableObj->createVertexBuffer(geometryData, sizeof(geometryData), sizeof(geometryData[0]), false);
     }
     CommandBufferMgr::endCommandBuffer(cmdVertexBuffer);
     CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &cmdVertexBuffer);
@@ -357,6 +365,21 @@ void VulkanRenderer::createShaders() {
 #endif
 }
 
+
+// Create the descriptor set
+void VulkanRenderer::createDescriptors() {
+    for (auto drawableObj : drawableList) {
+        // It is upto an application how it manages the
+        // creation of descriptor. Descriptors can be cached
+        // and reuse for all similar objects.
+        drawableObj->createDescriptorSetLayout(false);
+
+        // Create the descriptor set
+        drawableObj->createDescriptor(false);
+    }
+
+}
+
 void VulkanRenderer::destroyFramebuffers() {
     for (uint32_t i = 0; i < swapChainObj->scPublicVars.swapchainImageCount; i++) {
         vkDestroyFramebuffer(deviceObj->device, frameBuffers.at(i), NULL);
@@ -377,7 +400,13 @@ void VulkanRenderer::destroyRenderpass() {
 void VulkanRenderer::destroyDrawableVertexBuffer() {
     for (auto drawableObj : drawableList) {
         drawableObj->destroyVertexBuffer();
-        drawableObj->destroyVertexIndex();
+        //drawableObj->destroyVertexIndex();
+    }
+}
+
+void VulkanRenderer::destroyDrawableUniformBuffer() {
+    for (auto drawableObj : drawableList) {
+        drawableObj->destroyUniformBuffer();
     }
 }
 
@@ -541,7 +570,10 @@ void VulkanRenderer::createFrameBuffer(bool includeDepth) {
 }
 
 void VulkanRenderer::createPipelineStateManagement() {
-    // UNIFORM Buffer variable initialization starts here
+    for (auto drawableObj : drawableList) {
+        // Use the descriptor layout and create the pipeline layout.
+        drawableObj->createPipelineLayout();
+    }
     pipelineObj.createPipelineCache();
 
     const bool depthPresent = false;

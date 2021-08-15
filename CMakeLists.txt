@@ -75,6 +75,9 @@ add_executable(${Recipe_Name} ${CPP_FILES} ${HPP_FILES})
 
 target_link_libraries(${Recipe_Name} ${VULKAN_LIB_LIST} Vulkan::Vulkan)
 
+add_subdirectory(vendor/glm)
+target_link_libraries(${Recipe_Name} glm::glm)
+
 set_property(TARGET ${Recipe_Name} PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/binaries)
 set_property(TARGET ${Recipe_Name} PROPERTY RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}/binaries)
 set_property(TARGET ${Recipe_Name} PROPERTY RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/binaries)

@@ -31,7 +31,6 @@ public:
     // Pipeline preparation member variables
     // Pipeline cache object
     VkPipelineCache pipelineCache;
-    VkPipelineLayout pipelineLayout;
     VulkanApplication* appObj;
     VulkanDevice* deviceObj;
 };

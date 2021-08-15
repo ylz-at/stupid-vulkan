@@ -139,9 +139,13 @@ void VulkanApplication::resize() {
     rendererObj->destroyCommandPool();
     rendererObj->destroyPipeline();
     rendererObj->getPipelineObject()->destroyPipelineCache();
+    for (VulkanDrawable *drawableObj : *rendererObj->getDrawingItems()) {
+        drawableObj->destroyDescriptor();
+    }
     rendererObj->destroyRenderpass();
     rendererObj->getSwapChain()->destroySwapChain();
     rendererObj->destroyDrawableVertexBuffer();
+    rendererObj->destroyDrawableUniformBuffer();
     rendererObj->destroyDepthBuffer();
     rendererObj->initialize();
     prepare();
@@ -152,10 +156,14 @@ void VulkanApplication::resize() {
 void VulkanApplication::deInitialize() {
     rendererObj->destroyPipeline();
     rendererObj->getPipelineObject()->destroyPipelineCache();
+    for (VulkanDrawable *drawableObj : *rendererObj->getDrawingItems()) {
+        drawableObj->destroyDescriptor();
+    }
     rendererObj->getShader()->destroyShaders();
     rendererObj->destroyFramebuffers();
     rendererObj->destroyRenderpass();
     rendererObj->destroyDrawableVertexBuffer();
+    rendererObj->destroyDrawableUniformBuffer();
     rendererObj->destroyDrawableCommandBuffer();
     rendererObj->destroyDepthBuffer();
     rendererObj->getSwapChain()->destroySwapChain();
@@ -178,7 +186,7 @@ void VulkanApplication::prepare() {
 }
 
 void VulkanApplication::update() {
-    // Place holder, this will be utilized in the upcoming chapters
+    rendererObj->update();
 }
 
 bool VulkanApplication::render() {

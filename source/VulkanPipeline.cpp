@@ -2,7 +2,6 @@
 #include "VulkanApplication.h"
 #include "VulkanShader.h"
 #include "VulkanRenderer.h"
-#include "VulkanDevice.h"
 
 
 VulkanPipeline::VulkanPipeline() {
@@ -145,17 +144,11 @@ bool VulkanPipeline::createPipeline(VulkanDrawable *drawableObj, VkPipeline *pip
     multisampleStateCreateInfo.alphaToOneEnable = VK_FALSE;
     multisampleStateCreateInfo.minSampleShading = 0.0;
 
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
-    pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    VkResult result;
-    result = vkCreatePipelineLayout(deviceObj->device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
-    assert(result == VK_SUCCESS);
-
     VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
     pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipelineCreateInfo.pNext = nullptr;
     pipelineCreateInfo.flags = 0;
-    pipelineCreateInfo.layout = pipelineLayout;
+    pipelineCreateInfo.layout = drawableObj->pipelineLayout;;
     pipelineCreateInfo.basePipelineHandle = nullptr;
     pipelineCreateInfo.basePipelineIndex = 0;
     pipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
@@ -184,5 +177,4 @@ bool VulkanPipeline::createPipeline(VulkanDrawable *drawableObj, VkPipeline *pip
 void VulkanPipeline::destroyPipelineCache()
 {
     vkDestroyPipelineCache(deviceObj->device, pipelineCache, nullptr);
-    vkDestroyPipelineLayout(deviceObj->device, pipelineLayout, nullptr);
 }
