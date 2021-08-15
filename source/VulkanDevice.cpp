@@ -21,6 +21,8 @@ VkResult VulkanDevice::createDevice(std::vector<const char *> &layers, std::vect
     qcInfo.queueCount = 1;
     qcInfo.pQueuePriorities = queuePriorities;
 
+    VkPhysicalDeviceFeatures df = {};
+    df.depthClamp = true;
     VkDeviceCreateInfo dcInfo = {};
     dcInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     dcInfo.pNext = nullptr;
@@ -30,7 +32,7 @@ VkResult VulkanDevice::createDevice(std::vector<const char *> &layers, std::vect
     dcInfo.ppEnabledLayerNames = nullptr;
     dcInfo.enabledExtensionCount = (uint32_t) extensions.size();
     dcInfo.ppEnabledExtensionNames = extensions.empty() ? nullptr : extensions.data();
-    dcInfo.pEnabledFeatures = nullptr;
+    dcInfo.pEnabledFeatures = &df;
 
     result = vkCreateDevice(*gpu, &dcInfo, nullptr, &device);
     assert(result == VK_SUCCESS);
@@ -54,7 +56,7 @@ bool VulkanDevice::memoryTypeFromProperties(uint32_t typeBits, VkFlags requireme
 }
 
 void VulkanDevice::getPhysicalDeviceQueueAndProperties() {
-    // Queue queue families count with pass NULL as second parameter
+    // Queue families count with pass NULL as second parameter
     vkGetPhysicalDeviceQueueFamilyProperties2(*gpu, &queueFamilyCount, nullptr);
 
     // Allocate space to accommodate Queue Properties
